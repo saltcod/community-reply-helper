@@ -7,6 +7,7 @@ import { ExternalLink, TrendingUp, MessageCircle, Trash2 } from 'lucide-react';
 import { TriageItemWithThread } from '@/lib/types/triage';
 import { markTriageResolved } from '@/app/protected/triage/actions';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface ActionCardProps {
   item: TriageItemWithThread;
@@ -14,6 +15,8 @@ interface ActionCardProps {
 
 export function ActionCard({ item }: ActionCardProps) {
   const [isResolving, setIsResolving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const getPriorityVariant = (priority: number) => {
     if (priority <= 2) return 'destructive';
@@ -34,10 +37,13 @@ export function ActionCard({ item }: ActionCardProps) {
 
   const handleMarkResolved = async () => {
     setIsResolving(true);
+    setError(null);
     try {
       await markTriageResolved(item.id);
+      router.refresh();
     } catch (error) {
       console.error('Failed to mark as resolved:', error);
+      setError(error instanceof Error ? error.message : 'Failed to mark as resolved');
       setIsResolving(false);
     }
   };
@@ -94,6 +100,12 @@ export function ActionCard({ item }: ActionCardProps) {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+            {error}
           </div>
         )}
 
