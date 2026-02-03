@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { TriageTabs } from '@/components/triage/triage-tabs';
-import { Action, TriageItemWithThread } from '@/lib/types/triage';
+import { Action, SimilarSolvedThread, TriageItemWithThread } from '@/lib/types/triage';
 import { Suspense } from 'react';
 
 async function TriageContent() {
@@ -53,6 +53,8 @@ async function TriageContent() {
             status: item.status,
             analyzed_at: item.analyzed_at,
             action: action,
+            similar_solved_threads: item.similar_solved_threads as SimilarSolvedThread[] | undefined,
+            ai_suggested_reply: item.ai_suggested_reply as string | undefined,
             thread: item.thread,
           };
 
