@@ -11,10 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
   Lightbulb,
-  List,
 } from "lucide-react";
 import { TriageItemWithThread } from "@/lib/types/triage";
-import { markTriageResolved } from "@/app/protected/triage/actions";
+import { markTriageResolved } from "@/app/actions";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -68,11 +67,14 @@ export function ActionCard({ item }: ActionCardProps) {
     <Card className="mb-4">
       <CardHeader>
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
               {getActionIcon()}
               <CardTitle className="text-lg">{item.thread.title}</CardTitle>
             </div>
+            <code className="text-xs text-muted-foreground">
+              {item.thread.thread_key}
+            </code>
             <div className="flex items-center gap-2">
               <Badge variant={getPriorityVariant(item.action.priority)}>
                 Priority {item.action.priority}
