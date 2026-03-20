@@ -1,12 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { ActionCard } from './action-card';
 import { TriageItemWithThread } from '@/lib/types/triage';
+import { MessageCircle, TrendingUp, Trash2, Inbox } from 'lucide-react';
 
 interface TriageTabsProps {
   amplifyItems: TriageItemWithThread[];
@@ -14,85 +12,90 @@ interface TriageTabsProps {
   deleteItems: TriageItemWithThread[];
 }
 
-const filterAiTriaged = (items: TriageItemWithThread[]) =>
-  items.filter((item) => item.ai_suggested_reply);
-
 export function TriageTabs({ amplifyItems, respondItems, deleteItems }: TriageTabsProps) {
-  const [showOnlyAiTriaged, setShowOnlyAiTriaged] = useState(false);
+  const renderEmpty = (type: string) => (
+    <div className="flex flex-col items-center justify-center py-20 text-center" role="status">
+      <div
+        className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center mb-4"
+        aria-hidden="true"
+      >
+        <Inbox className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {`No ${type} actions at this time.`}
+      </p>
+    </div>
+  );
 
-  const filteredAmplify = showOnlyAiTriaged ? filterAiTriaged(amplifyItems) : amplifyItems;
-  const filteredRespond = showOnlyAiTriaged ? filterAiTriaged(respondItems) : respondItems;
-  const filteredDelete = showOnlyAiTriaged ? filterAiTriaged(deleteItems) : deleteItems;
+  const renderItems = (items: TriageItemWithThread[]) => (
+    <div className="space-y-3" role="list" aria-label="Triage items">
+      {items.map((item, index) => (
+        <div
+          key={`${item.id}-${item.action.type}-${index}`}
+          role="listitem"
+          className="animate-card-enter"
+          style={{ animationDelay: `${Math.min(index * 50, 400)}ms` }}
+        >
+          <ActionCard item={item} />
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <Tabs defaultValue="respond" className="w-full">
-      <div className="flex items-center justify-between mb-4">
-        <TabsList className="grid w-fit grid-cols-3">
-          <TabsTrigger value="respond" className="flex items-center gap-2">
-            Respond
-            <Badge variant="secondary">{filteredRespond.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="amplify" className="flex items-center gap-2">
-            Amplify
-            <Badge variant="secondary">{filteredAmplify.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="delete" className="flex items-center gap-2">
-            Delete
-            <Badge variant="secondary">{filteredDelete.length}</Badge>
-          </TabsTrigger>
-        </TabsList>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="ai-triaged-filter"
-            checked={showOnlyAiTriaged}
-            onCheckedChange={(checked) => setShowOnlyAiTriaged(checked === true)}
-          />
-          <Label htmlFor="ai-triaged-filter" className="text-sm cursor-pointer">
-            Show only AI triaged
-          </Label>
-        </div>
-      </div>
+      <TabsList variant="line" className="h-auto w-full sm:w-auto gap-0 border-b border-border/40 rounded-none p-0 mb-6">
+        <TabsTrigger
+          value="respond"
+          className="rounded-none px-4 py-2.5 gap-2 text-sm"
+        >
+          <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Respond</span>
+          <Badge
+            variant="secondary"
+            className="ml-0.5 h-5 min-w-[20px] flex items-center justify-center text-[11px] tabular-nums rounded-md"
+          >
+            {respondItems.length}
+          </Badge>
+        </TabsTrigger>
+        <TabsTrigger
+          value="amplify"
+          className="rounded-none px-4 py-2.5 gap-2 text-sm"
+        >
+          <TrendingUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Amplify</span>
+          <Badge
+            variant="secondary"
+            className="ml-0.5 h-5 min-w-[20px] flex items-center justify-center text-[11px] tabular-nums rounded-md"
+          >
+            {amplifyItems.length}
+          </Badge>
+        </TabsTrigger>
+        <TabsTrigger
+          value="delete"
+          className="rounded-none px-4 py-2.5 gap-2 text-sm"
+        >
+          <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="hidden sm:inline">Delete</span>
+          <Badge
+            variant="secondary"
+            className="ml-0.5 h-5 min-w-[20px] flex items-center justify-center text-[11px] tabular-nums rounded-md"
+          >
+            {deleteItems.length}
+          </Badge>
+        </TabsTrigger>
+      </TabsList>
 
-      <TabsContent value="respond" className="mt-6">
-        {filteredRespond.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {showOnlyAiTriaged ? 'No AI triaged respond actions.' : 'No respond actions at this time.'}
-          </div>
-        ) : (
-          <div>
-            {filteredRespond.map((item, index) => (
-              <ActionCard key={`${item.id}-${item.action.type}-${index}`} item={item} />
-            ))}
-          </div>
-        )}
+      <TabsContent value="respond" className="mt-0">
+        {respondItems.length === 0 ? renderEmpty('respond') : renderItems(respondItems)}
       </TabsContent>
 
-      <TabsContent value="amplify" className="mt-6">
-        {filteredAmplify.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {showOnlyAiTriaged ? 'No AI triaged amplify actions.' : 'No amplify actions at this time.'}
-          </div>
-        ) : (
-          <div>
-            {filteredAmplify.map((item, index) => (
-              <ActionCard key={`${item.id}-${item.action.type}-${index}`} item={item} />
-            ))}
-          </div>
-        )}
+      <TabsContent value="amplify" className="mt-0">
+        {amplifyItems.length === 0 ? renderEmpty('amplify') : renderItems(amplifyItems)}
       </TabsContent>
 
-      <TabsContent value="delete" className="mt-6">
-        {filteredDelete.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {showOnlyAiTriaged ? 'No AI triaged delete actions.' : 'No delete actions at this time.'}
-          </div>
-        ) : (
-          <div>
-            {filteredDelete.map((item, index) => (
-              <ActionCard key={`${item.id}-${item.action.type}-${index}`} item={item} />
-            ))}
-          </div>
-        )}
+      <TabsContent value="delete" className="mt-0">
+        {deleteItems.length === 0 ? renderEmpty('delete') : renderItems(deleteItems)}
       </TabsContent>
     </Tabs>
   );

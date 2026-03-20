@@ -44,6 +44,18 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        respond: {
+          DEFAULT: "hsl(var(--respond))",
+          muted: "hsl(var(--respond-muted))",
+        },
+        amplify: {
+          DEFAULT: "hsl(var(--amplify))",
+          muted: "hsl(var(--amplify-muted))",
+        },
+        "action-delete": {
+          DEFAULT: "hsl(var(--action-delete))",
+          muted: "hsl(var(--action-delete-muted))",
+        },
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",
@@ -56,6 +68,9 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        display: ["var(--font-display)", "sans-serif"],
       },
     },
   },
