@@ -86,7 +86,6 @@ async function TriageContent() {
   deleteItems.sort((a, b) => a.action.priority - b.action.priority);
 
   const allItems = [...amplifyItems, ...respondItems, ...deleteItems];
-  const totalItems = allItems.length;
   const aiTriagedCount = allItems.filter((i) => i.ai_suggested_reply).length;
   const criticalCount = allItems.filter((i) => i.action.priority <= 2).length;
 
@@ -95,38 +94,25 @@ async function TriageContent() {
       amplifyItems={amplifyItems}
       respondItems={respondItems}
       deleteItems={deleteItems}
-      totalItems={totalItems}
       aiTriagedCount={aiTriagedCount}
       criticalCount={criticalCount}
     />
   );
 }
 
-
 function LoadingSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading triage dashboard">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="rounded-lg border border-border/50 bg-card p-5 animate-pulse"
-          >
-            <div className="h-3 w-20 bg-muted rounded mb-5" />
-            <div className="h-8 w-14 bg-muted rounded" />
-          </div>
-        ))}
-      </div>
-      <div className="h-10 bg-muted rounded-lg mb-6" />
+      <div className="h-8 w-24 bg-muted rounded mb-8" />
+      <div className="h-10 bg-muted/50 rounded-lg mb-6" />
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="rounded-lg border border-border/50 bg-card p-6 mb-3 animate-pulse"
+          className="rounded-lg border border-border/50 bg-card p-5 mb-3 animate-pulse"
         >
-          <div className="h-3 w-32 bg-muted rounded mb-4" />
           <div className="h-5 w-3/4 bg-muted rounded mb-3" />
           <div className="h-3 w-full bg-muted rounded mb-2" />
-          <div className="h-3 w-2/3 bg-muted rounded" />
+          <div className="h-3 w-1/2 bg-muted rounded" />
         </div>
       ))}
     </div>
@@ -136,21 +122,9 @@ function LoadingSkeleton() {
 export default function TriagePage() {
   return (
     <div className="w-full">
-      <div className="mb-10">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs font-medium uppercase tracking-widest text-primary font-display">
-            Dashboard
-          </span>
-        </div>
-        <h1 className="text-3xl font-display font-semibold tracking-tight mb-2">
-          Triage
-        </h1>
-        <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">
-          Review and manage community thread actions across Respond, Amplify,
-          and Delete categories.
-        </p>
-      </div>
+      <h1 className="text-2xl font-display font-semibold tracking-tight mb-8">
+        Triage
+      </h1>
       <Suspense fallback={<LoadingSkeleton />}>
         <TriageContent />
       </Suspense>
