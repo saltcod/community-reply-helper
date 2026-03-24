@@ -1,13 +1,22 @@
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ExternalLink, TrendingUp, MessageCircle, Trash2 } from 'lucide-react';
-import { TriageItemWithThread } from '@/lib/types/triage';
-import { markTriageResolved } from '@/app/protected/triage/actions';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  ExternalLink,
+  TrendingUp,
+  MessageCircle,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Lightbulb,
+} from "lucide-react";
+import { TriageItemWithThread } from "@/lib/types/triage";
+import { markTriageResolved } from "@/app/actions";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 
 interface ActionCardProps {
   item: TriageItemWithThread;
@@ -16,21 +25,25 @@ interface ActionCardProps {
 export function ActionCard({ item }: ActionCardProps) {
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAiTriage, setShowAiTriage] = useState(false);
+  const [showRawThreads, setShowRawThreads] = useState(false);
   const router = useRouter();
 
+  const similarThreads = item.similar_solved_threads || [];
+
   const getPriorityVariant = (priority: number) => {
-    if (priority <= 2) return 'destructive';
-    if (priority === 3) return 'default';
-    return 'secondary';
+    if (priority <= 2) return "destructive";
+    if (priority === 3) return "default";
+    return "secondary";
   };
 
   const getActionIcon = () => {
     switch (item.action.type) {
-      case 'amplify':
+      case "amplify":
         return <TrendingUp className="h-4 w-4" />;
-      case 'respond':
+      case "respond":
         return <MessageCircle className="h-4 w-4" />;
-      case 'delete':
+      case "delete":
         return <Trash2 className="h-4 w-4" />;
     }
   };
@@ -42,8 +55,10 @@ export function ActionCard({ item }: ActionCardProps) {
       await markTriageResolved(item.id);
       router.refresh();
     } catch (error) {
-      console.error('Failed to mark as resolved:', error);
-      setError(error instanceof Error ? error.message : 'Failed to mark as resolved');
+      console.error("Failed to mark as resolved:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to mark as resolved",
+      );
       setIsResolving(false);
     }
   };
@@ -52,11 +67,14 @@ export function ActionCard({ item }: ActionCardProps) {
     <Card className="mb-4">
       <CardHeader>
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
               {getActionIcon()}
               <CardTitle className="text-lg">{item.thread.title}</CardTitle>
             </div>
+            <code className="text-xs text-muted-foreground">
+              {item.thread.thread_key}
+            </code>
             <div className="flex items-center gap-2">
               <Badge variant={getPriorityVariant(item.action.priority)}>
                 Priority {item.action.priority}
@@ -86,7 +104,9 @@ export function ActionCard({ item }: ActionCardProps) {
         {item.action.target && (
           <div>
             <p className="text-sm font-medium mb-1">Target</p>
-            <p className="text-sm text-muted-foreground">{item.action.target}</p>
+            <p className="text-sm text-muted-foreground">
+              {item.action.target}
+            </p>
           </div>
         )}
 
@@ -103,6 +123,46 @@ export function ActionCard({ item }: ActionCardProps) {
           </div>
         )}
 
+        {(item.ai_suggested_reply || similarThreads.length > 0) && (
+          <div className="border-t pt-4">
+            <button
+              onClick={() => setShowAiTriage(!showAiTriage)}
+              className="flex items-center gap-2 text-sm font-medium w-full text-left hover:text-primary transition-colors"
+            >
+              <Lightbulb className="h-4 w-4 text-yellow-500" />
+              <span>AI Triage</span>
+              {showAiTriage ? (
+                <ChevronUp className="h-4 w-4 ml-auto" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-auto" />
+              )}
+            </button>
+            {showAiTriage && (
+              <div className="mt-3 space-y-4">
+                {item.ai_suggested_reply && (
+                  <div className="bg-muted/50 rounded-lg p-4 prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ol:my-2 prose-li:my-1 prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:font-semibold">
+                    <ReactMarkdown
+                      components={{
+                        a: ({ href, children }) => (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
+                      {item.ai_suggested_reply}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {error && (
           <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
             {error}
@@ -110,11 +170,7 @@ export function ActionCard({ item }: ActionCardProps) {
         )}
 
         <div className="flex gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-          >
+          <Button variant="outline" size="sm" asChild>
             <a
               href={item.thread.external_activity_url}
               target="_blank"
@@ -131,7 +187,7 @@ export function ActionCard({ item }: ActionCardProps) {
             onClick={handleMarkResolved}
             disabled={isResolving}
           >
-            {isResolving ? 'Marking...' : 'Mark Resolved'}
+            {isResolving ? "Marking..." : "Mark Resolved"}
           </Button>
         </div>
       </CardContent>
