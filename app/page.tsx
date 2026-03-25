@@ -18,11 +18,13 @@ async function TriageContent() {
       *,
       thread:contribute_threads(
         title,
+        conversation,
         thread_key,
         external_activity_url,
         author,
         labels,
-        sentiment
+        sentiment,
+        source
       )
     `,
     )
@@ -88,6 +90,11 @@ async function TriageContent() {
   const allItems = [...amplifyItems, ...respondItems, ...deleteItems];
   const aiTriagedCount = allItems.filter((i) => i.ai_suggested_reply).length;
   const criticalCount = allItems.filter((i) => i.action.priority <= 2).length;
+  const platformCounts = allItems.reduce<Record<string, number>>((acc, item) => {
+    const source = item.thread.source ?? "unknown";
+    acc[source] = (acc[source] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <TriageDashboard
@@ -96,6 +103,7 @@ async function TriageContent() {
       deleteItems={deleteItems}
       aiTriagedCount={aiTriagedCount}
       criticalCount={criticalCount}
+      platformCounts={platformCounts}
     />
   );
 }

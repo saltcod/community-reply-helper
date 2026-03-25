@@ -20,8 +20,11 @@ interface TriageTabsProps {
   filter: Filter;
   onFilterChange: (f: Filter) => void;
   onFilterReset: () => void;
+  platformFilter: string | null;
+  onPlatformFilterChange: (platform: string) => void;
   aiTriagedCount: number;
   criticalCount: number;
+  platformCounts: Record<string, number>;
 }
 
 export function TriageTabs({
@@ -31,9 +34,16 @@ export function TriageTabs({
   filter,
   onFilterChange,
   onFilterReset,
+  platformFilter,
+  onPlatformFilterChange,
   aiTriagedCount,
   criticalCount,
+  platformCounts,
 }: TriageTabsProps) {
+  const platforms = Object.entries(platformCounts ?? {}).sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+
   const renderEmpty = (type: string) => (
     <div
       className="flex flex-col items-center justify-center py-20 text-center"
@@ -46,11 +56,11 @@ export function TriageTabs({
         <Inbox className="h-4 w-4 text-muted-foreground" />
       </div>
       <p className="text-sm text-muted-foreground">
-        {filter
+        {filter || platformFilter
           ? `No matching ${type} items.`
           : `No ${type} actions at this time.`}
       </p>
-      {filter && (
+      {(filter || platformFilter) && (
         <button
           onClick={onFilterReset}
           className="mt-2 text-xs text-primary hover:underline"
@@ -79,50 +89,71 @@ export function TriageTabs({
   return (
     <Tabs defaultValue="respond" className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <TabsList
-          variant="line"
-          className="h-auto w-full sm:w-auto gap-0 border-b border-border/40 rounded-none p-0"
-        >
-          <TabsTrigger
-            value="respond"
-            className="rounded-none px-3 py-2 gap-1.5 text-sm"
+        <div className="flex-1 min-w-0">
+          <TabsList
+            variant="line"
+            className="h-auto w-full sm:w-auto gap-0 border-b border-border/40 rounded-none p-0"
           >
-            <MessageCircle
-              className="h-3.5 w-3.5 shrink-0"
-              aria-hidden="true"
-            />
-            <span className="hidden sm:inline">Respond</span>
-            <span className="text-xs tabular-nums text-muted-foreground ml-0.5">
-              {respondItems.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="amplify"
-            className="rounded-none px-3 py-2 gap-1.5 text-sm"
-          >
-            <TrendingUp
-              className="h-3.5 w-3.5 shrink-0"
-              aria-hidden="true"
-            />
-            <span className="hidden sm:inline">Amplify</span>
-            <span className="text-xs tabular-nums text-muted-foreground ml-0.5">
-              {amplifyItems.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="delete"
-            className="rounded-none px-3 py-2 gap-1.5 text-sm"
-          >
-            <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">Delete</span>
-            <span className="text-xs tabular-nums text-muted-foreground ml-0.5">
-              {deleteItems.length}
-            </span>
-          </TabsTrigger>
-        </TabsList>
+            <TabsTrigger
+              value="respond"
+              className="rounded-none px-3 py-2 gap-1.5 text-sm"
+            >
+              <MessageCircle
+                className="h-3.5 w-3.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="hidden sm:inline">Respond</span>
+              <span className="text-xs tabular-nums text-muted-foreground ml-0.5">
+                {respondItems.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="amplify"
+              className="rounded-none px-3 py-2 gap-1.5 text-sm"
+            >
+              <TrendingUp
+                className="h-3.5 w-3.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="hidden sm:inline">Amplify</span>
+              <span className="text-xs tabular-nums text-muted-foreground ml-0.5">
+                {amplifyItems.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="delete"
+              className="rounded-none px-3 py-2 gap-1.5 text-sm"
+            >
+              <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline">Delete</span>
+              <span className="text-xs tabular-nums text-muted-foreground ml-0.5">
+                {deleteItems.length}
+              </span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Filter pills */}
-        <div className="flex items-center gap-1.5">
+          {platforms.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {platforms.map(([platform, count]) => (
+                <button
+                  key={platform}
+                  onClick={() => onPlatformFilterChange(platform)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium capitalize transition-colors ${
+                    platformFilter === platform
+                      ? "border border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : "border border-border bg-background text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-pressed={platformFilter === platform}
+                >
+                  {platform}
+                  <span className="tabular-nums">{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 self-start sm:self-center">
           <button
             onClick={() => onFilterChange("ai_triaged")}
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${

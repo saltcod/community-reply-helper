@@ -8,8 +8,10 @@ import {
   Sparkles,
   Check,
   AlertCircle,
+  Copy,
 } from "lucide-react";
 import { TriageItemWithThread } from "@/lib/types/triage";
+import { getThreadExternalUrl } from "@/lib/triage/url";
 import { markTriageResolved } from "@/app/actions";
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
@@ -29,17 +31,23 @@ export function ActionCard({ item }: ActionCardProps) {
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
   const detailsId = useId();
 
   const accent = accentColors[item.action.type];
   const isCritical = item.action.priority <= 2;
+  const threadUrl = getThreadExternalUrl(
+    item.thread.thread_key,
+    item.thread.external_activity_url,
+  );
 
   const hasDetails =
-    item.action.suggested_reply ||
     item.action.target ||
     (item.action.evidence && item.action.evidence.length > 0) ||
     item.ai_suggested_reply;
+
+  const userMessage = getUserMessage(item);
 
   const handleMarkResolved = async () => {
     setIsResolving(true);
@@ -53,6 +61,20 @@ export function ActionCard({ item }: ActionCardProps) {
         err instanceof Error ? err.message : "Failed to mark as resolved",
       );
       setIsResolving(false);
+    }
+  };
+
+  const handleCopySuggestedReply = async () => {
+    if (!item.action.suggested_reply) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(item.action.suggested_reply);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy suggested reply:", err);
     }
   };
 
@@ -70,28 +92,81 @@ export function ActionCard({ item }: ActionCardProps) {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold leading-snug mb-1 truncate">
-              {item.thread.title}
+              {threadUrl ? (
+                <a
+                  href={threadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline underline-offset-2"
+                >
+                  {item.thread.title}
+                </a>
+              ) : (
+                item.thread.title
+              )}
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+            {userMessage && (
+              <p className="text-sm text-foreground/80 leading-relaxed line-clamp-2">
+                {userMessage}
+              </p>
+            )}
+            <p className="mt-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              AI Summary
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed line-clamp-2">
               {item.action.summary}
             </p>
+            {item.action.suggested_reply && (
+              <div className="mt-3 rounded-md bg-muted/40 p-3">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Suggested reply
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleCopySuggestedReply}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label="Copy suggested reply"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3 w-3" aria-hidden="true" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" aria-hidden="true" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-sm italic text-foreground/80 leading-relaxed line-clamp-3">
+                  &ldquo;{item.action.suggested_reply}&rdquo;
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
             <Button
               variant="ghost"
               size="sm"
-              asChild
+              asChild={Boolean(threadUrl)}
               className="h-7 px-2 text-xs"
+              disabled={!threadUrl}
             >
-              <a
-                href={item.thread.external_activity_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only sm:ml-1">View</span>
-              </a>
+              {threadUrl ? (
+                <a href={threadUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-1">View</span>
+                </a>
+              ) : (
+                <span>
+                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only sm:ml-1">View</span>
+                </span>
+              )}
             </Button>
             <Button
               size="sm"
@@ -185,18 +260,6 @@ export function ActionCard({ item }: ActionCardProps) {
             role="region"
             aria-label="Thread details"
           >
-            {/* Suggested Reply */}
-            {item.action.suggested_reply && (
-              <div className="rounded-md bg-muted/40 p-3">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Suggested reply
-                </p>
-                <p className="text-sm italic text-foreground/80 leading-relaxed">
-                  &ldquo;{item.action.suggested_reply}&rdquo;
-                </p>
-              </div>
-            )}
-
             {/* Target */}
             {item.action.target && (
               <p className="text-sm">
@@ -259,4 +322,30 @@ export function ActionCard({ item }: ActionCardProps) {
       </div>
     </article>
   );
+}
+
+function getUserMessage(item: TriageItemWithThread) {
+  const firstEvidence = item.action.evidence?.find(Boolean)?.trim();
+  if (firstEvidence) {
+    return firstEvidence;
+  }
+
+  const target = item.action.target?.trim();
+  if (target) {
+    const match = target.match(/^.+? on [A-Z][a-z]{2} \d{1,2}, \d{4}, [0-9: ]+[AP]M: (.+)$/);
+    return match?.[1]?.trim() || target;
+  }
+
+  const firstConversationLine = item.thread.conversation
+    ?.split("\n")
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  if (!firstConversationLine) {
+    return null;
+  }
+
+  const labeledLine = firstConversationLine.replace(/^(Target|Evidence|Summary):\s*/i, "");
+  const colonIndex = labeledLine.indexOf(":");
+  return colonIndex >= 0 ? labeledLine.slice(colonIndex + 1).trim() : labeledLine;
 }
