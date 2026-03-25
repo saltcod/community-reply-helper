@@ -48,6 +48,8 @@ export function ActionCard({ item }: ActionCardProps) {
     item.ai_suggested_reply;
 
   const userMessage = getUserMessage(item);
+  const sourceLabel = formatSourceLabel(item.thread.source);
+  const timeAgo = formatRelativeTime(item.thread.first_msg_time ?? item.analyzed_at);
 
   const handleMarkResolved = async () => {
     setIsResolving(true);
@@ -88,10 +90,32 @@ export function ActionCard({ item }: ActionCardProps) {
       />
 
       <div className="pl-4 pr-4 py-4">
-        {/* Top row: title + actions */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold leading-snug mb-1 truncate">
+            <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground/80">{sourceLabel}</span>
+              <span aria-hidden="true">·</span>
+              <span>{timeAgo}</span>
+              <span aria-hidden="true">·</span>
+              <span>by {item.thread.author}</span>
+              {isCritical && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-medium text-destructive">P{item.action.priority}</span>
+                </>
+              )}
+              {item.ai_suggested_reply && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1 text-primary">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    AI
+                  </span>
+                </>
+              )}
+            </div>
+
+            <h3 className="text-base font-semibold leading-snug mb-1.5">
               {threadUrl ? (
                 <a
                   href={threadUrl}
@@ -106,18 +130,18 @@ export function ActionCard({ item }: ActionCardProps) {
               )}
             </h3>
             {userMessage && (
-              <p className="text-sm text-foreground/80 leading-relaxed line-clamp-2">
+              <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
                 {userMessage}
               </p>
             )}
-            <p className="mt-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               AI Summary
             </p>
             <p className="mt-1 text-sm text-muted-foreground leading-relaxed line-clamp-2">
               {item.action.summary}
             </p>
             {item.action.suggested_reply && (
-              <div className="mt-3 rounded-md bg-muted/40 p-3">
+              <div className="mt-3 rounded-md border border-border/40 bg-muted/30 p-3">
                 <div className="mb-1.5 flex items-center justify-between gap-3">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     Suggested reply
@@ -190,53 +214,23 @@ export function ActionCard({ item }: ActionCardProps) {
           </div>
         </div>
 
-        {/* Meta row */}
-        <div className="flex items-center gap-2 mt-2.5 text-xs text-muted-foreground">
-          <span className="text-foreground/60">{item.thread.author}</span>
-
-          {isCritical && (
-            <>
-              <span className="text-border" aria-hidden="true">
-                ·
-              </span>
-              <span className="text-destructive font-medium">
-                P{item.action.priority}
-              </span>
-            </>
-          )}
-
-          {item.ai_suggested_reply && (
-            <>
-              <span className="text-border" aria-hidden="true">
-                ·
-              </span>
-              <span className="inline-flex items-center gap-0.5 text-primary">
-                <Sparkles className="h-3 w-3" aria-hidden="true" />
-                AI
-              </span>
-            </>
-          )}
-
-          {/* Expand toggle */}
-          {hasDetails && (
-            <>
-              <span className="flex-1" />
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-                aria-expanded={expanded}
-                aria-controls={detailsId}
-              >
-                Details
-                {expanded ? (
-                  <ChevronUp className="h-3 w-3" aria-hidden="true" />
-                ) : (
-                  <ChevronDown className="h-3 w-3" aria-hidden="true" />
-                )}
-              </button>
-            </>
-          )}
-        </div>
+        {hasDetails && (
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              aria-expanded={expanded}
+              aria-controls={detailsId}
+            >
+              Details
+              {expanded ? (
+                <ChevronUp className="h-3 w-3" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Error */}
         {error && (
@@ -325,9 +319,9 @@ export function ActionCard({ item }: ActionCardProps) {
 }
 
 function getUserMessage(item: TriageItemWithThread) {
-  const firstEvidence = item.action.evidence?.find(Boolean)?.trim();
-  if (firstEvidence) {
-    return firstEvidence;
+  const evidence = item.action.evidence?.filter(Boolean).map((line) => line.trim()) ?? [];
+  if (evidence.length > 0) {
+    return evidence.join(" ");
   }
 
   const target = item.action.target?.trim();
@@ -348,4 +342,46 @@ function getUserMessage(item: TriageItemWithThread) {
   const labeledLine = firstConversationLine.replace(/^(Target|Evidence|Summary):\s*/i, "");
   const colonIndex = labeledLine.indexOf(":");
   return colonIndex >= 0 ? labeledLine.slice(colonIndex + 1).trim() : labeledLine;
+}
+
+function formatSourceLabel(source: string | null) {
+  if (!source) {
+    return "Unknown";
+  }
+
+  return source
+    .split(/[_-]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatRelativeTime(timestamp: string | null) {
+  if (!timestamp) {
+    return "Unknown time";
+  }
+
+  const date = new Date(timestamp);
+  const diffMs = Date.now() - date.getTime();
+
+  if (Number.isNaN(diffMs) || diffMs < 0) {
+    return "Just now";
+  }
+
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) {
+    return "Just now";
+  }
+
+  if (diffMs < hour) {
+    return `${Math.floor(diffMs / minute)}m ago`;
+  }
+
+  if (diffMs < day) {
+    return `${Math.floor(diffMs / hour)}h ago`;
+  }
+
+  return `${Math.floor(diffMs / day)}d ago`;
 }

@@ -29,6 +29,7 @@ export interface TriageItemWithThread {
     title: string;
     conversation: string;
     thread_key: string;
+    first_msg_time: string | null;
     external_activity_url: string | null;
     author: string;
     labels: string[];

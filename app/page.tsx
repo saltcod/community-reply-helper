@@ -20,6 +20,7 @@ async function TriageContent() {
         title,
         conversation,
         thread_key,
+        first_msg_time,
         external_activity_url,
         author,
         labels,
