@@ -1,16 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
-import { TriageTabs } from "@/components/triage/triage-tabs";
+import { TriageDashboard } from "@/components/triage/triage-dashboard";
 import {
   Action,
   SimilarSolvedThread,
   TriageItemWithThread,
 } from "@/lib/types/triage";
 import { Suspense } from "react";
+import { AlertTriangle } from "lucide-react";
 
 async function TriageContent() {
   const supabase = await createClient();
 
-  // Fetch triage items with thread details
   const { data: triageItems, error } = await supabase
     .from("contribute_thread_triage")
     .select(
@@ -18,11 +18,14 @@ async function TriageContent() {
       *,
       thread:contribute_threads(
         title,
+        conversation,
         thread_key,
+        first_msg_time,
         external_activity_url,
         author,
         labels,
-        sentiment
+        sentiment,
+        source
       )
     `,
     )
@@ -32,24 +35,26 @@ async function TriageContent() {
   if (error) {
     console.error("Error fetching triage items:", error);
     return (
-      <p className="text-muted-foreground">
-        Error loading triage items. Please try again later.
-      </p>
+      <div
+        role="alert"
+        className="rounded-lg border border-destructive/20 bg-destructive/5 p-8 text-center"
+      >
+        <AlertTriangle className="h-5 w-5 text-destructive mx-auto mb-3" />
+        <p className="text-sm font-medium text-destructive">
+          Error loading triage items. Please try again later.
+        </p>
+      </div>
     );
   }
 
-  // Parse JSONB actions and categorize by type
   const amplifyItems: TriageItemWithThread[] = [];
   const respondItems: TriageItemWithThread[] = [];
   const deleteItems: TriageItemWithThread[] = [];
 
   if (triageItems) {
     for (const item of triageItems) {
-      // Parse the actions JSONB field
       const actions = item.actions as Action[];
-
       if (Array.isArray(actions)) {
-        // Process each action in the array
         for (const action of actions) {
           const enrichedItem: TriageItemWithThread = {
             id: item.id,
@@ -63,8 +68,6 @@ async function TriageContent() {
             ai_suggested_reply: item.ai_suggested_reply as string | undefined,
             thread: item.thread,
           };
-
-          // Categorize by action type
           switch (action.type) {
             case "amplify":
               amplifyItems.push(enrichedItem);
@@ -81,39 +84,55 @@ async function TriageContent() {
     }
   }
 
-  // Sort each category by priority (ascending - priority 1 first)
   amplifyItems.sort((a, b) => a.action.priority - b.action.priority);
   respondItems.sort((a, b) => a.action.priority - b.action.priority);
   deleteItems.sort((a, b) => a.action.priority - b.action.priority);
 
+  const allItems = [...amplifyItems, ...respondItems, ...deleteItems];
+  const platformCounts = allItems.reduce<Record<string, number>>((acc, item) => {
+    const source = item.thread.source ?? "unknown";
+    acc[source] = (acc[source] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return (
-    <>
-      <p className="text-muted-foreground mb-6">
-        Review and manage thread actions across Amplify, Respond, and Delete
-        categories.
-      </p>
-      <TriageTabs
-        amplifyItems={amplifyItems}
-        respondItems={respondItems}
-        deleteItems={deleteItems}
-      />
-    </>
+    <TriageDashboard
+      amplifyItems={amplifyItems}
+      respondItems={respondItems}
+      deleteItems={deleteItems}
+      platformCounts={platformCounts}
+    />
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading triage dashboard">
+      <div className="h-8 w-24 bg-muted rounded mb-8" />
+      <div className="h-10 bg-muted/50 rounded-lg mb-6" />
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="rounded-lg border border-border/50 bg-card p-5 mb-3 animate-pulse"
+        >
+          <div className="h-5 w-3/4 bg-muted rounded mb-3" />
+          <div className="h-3 w-full bg-muted rounded mb-2" />
+          <div className="h-3 w-1/2 bg-muted rounded" />
+        </div>
+      ))}
+    </div>
   );
 }
 
 export default function TriagePage() {
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="py-6 font-bold text-2xl mb-4">Triage Dashboard</div>
-        <Suspense
-          fallback={
-            <p className="text-muted-foreground">Loading triage items...</p>
-          }
-        >
-          <TriageContent />
-        </Suspense>
-      </div>
+    <div className="w-full">
+      <h1 className="text-2xl font-display font-semibold tracking-tight mb-8">
+        Triage
+      </h1>
+      <Suspense fallback={<LoadingSkeleton />}>
+        <TriageContent />
+      </Suspense>
     </div>
   );
 }

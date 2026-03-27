@@ -27,10 +27,13 @@ export interface TriageItemWithThread {
   ai_suggested_reply?: string;
   thread: {
     title: string;
+    conversation: string;
     thread_key: string;
-    external_activity_url: string;
+    first_msg_time: string | null;
+    external_activity_url: string | null;
     author: string;
     labels: string[];
     sentiment: string;
+    source: string | null;
   };
 }
