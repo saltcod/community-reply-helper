@@ -2,54 +2,35 @@
 
 import { Button } from "@/components/ui/button";
 import {
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
   Check,
   AlertCircle,
-  Copy,
+  Github,
 } from "lucide-react";
 import { TriageItemWithThread } from "@/lib/types/triage";
 import { getThreadExternalUrl } from "@/lib/triage/url";
 import { markTriageResolved } from "@/app/actions";
-import { useState, useId } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
 
 interface ActionCardProps {
   item: TriageItemWithThread;
 }
 
-const accentColors = {
-  respond: "var(--respond)",
-  amplify: "var(--amplify)",
-  delete: "var(--action-delete)",
-};
-
 export function ActionCard({ item }: ActionCardProps) {
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [copied, setCopied] = useState(false);
   const router = useRouter();
-  const detailsId = useId();
 
-  const accent = accentColors[item.action.type];
   const isCritical = item.action.priority <= 2;
   const threadUrl = getThreadExternalUrl(
     item.thread.thread_key,
     item.thread.external_activity_url,
   );
 
-  const hasDetails =
-    item.action.target ||
-    (item.action.evidence && item.action.evidence.length > 0) ||
-    item.ai_suggested_reply;
-
-  const userMessage = getUserMessage(item);
-  const sourceLabel = formatSourceLabel(item.thread.source);
   const timeAgo = formatRelativeTime(item.thread.first_msg_time ?? item.analyzed_at);
+  const sourceLabel = formatSourceLabel(item.thread.source ?? "unknown");
+  const sourceBadge = getSourceBadge(sourceLabel);
+  const metaTags = getMetaTags(item);
 
   const handleMarkResolved = async () => {
     setIsResolving(true);
@@ -66,254 +47,87 @@ export function ActionCard({ item }: ActionCardProps) {
     }
   };
 
-  const handleCopySuggestedReply = async () => {
-    if (!item.action.suggested_reply) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(item.action.suggested_reply);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch (err) {
-      console.error("Failed to copy suggested reply:", err);
-    }
-  };
-
   return (
-    <article className="group relative rounded-lg border border-border/50 bg-card overflow-hidden transition-colors duration-150 hover:border-border/80">
-      {/* Left accent */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-0.5"
-        style={{ background: `hsl(${accent})` }}
-        aria-hidden="true"
-      />
-
-      <div className="pl-4 pr-4 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground/80">{sourceLabel}</span>
-              <span aria-hidden="true">·</span>
-              <span>{timeAgo}</span>
-              <span aria-hidden="true">·</span>
-              <span>by {item.thread.author}</span>
-              {isCritical && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="font-medium text-destructive">P{item.action.priority}</span>
-                </>
-              )}
-              {item.ai_suggested_reply && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1 text-primary">
-                    <Sparkles className="h-3 w-3" aria-hidden="true" />
-                    AI
-                  </span>
-                </>
-              )}
-            </div>
-
-            <h3 className="text-base font-semibold leading-snug mb-1.5">
-              {threadUrl ? (
-                <a
-                  href={threadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline underline-offset-2"
-                >
-                  {item.thread.title}
-                </a>
-              ) : (
-                item.thread.title
-              )}
-            </h3>
-            {userMessage && (
-              <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
-                {userMessage}
-              </p>
-            )}
-            <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              AI Summary
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground leading-relaxed line-clamp-2">
-              {item.action.summary}
-            </p>
-            {item.action.suggested_reply && (
-              <div className="mt-3 rounded-md border border-border/40 bg-muted/30 p-3">
-                <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Suggested reply
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleCopySuggestedReply}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label="Copy suggested reply"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="h-3 w-3" aria-hidden="true" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3 w-3" aria-hidden="true" />
-                        Copy
-                      </>
-                    )}
-                  </button>
-                </div>
-                <p className="text-sm italic text-foreground/80 leading-relaxed line-clamp-3">
-                  &ldquo;{item.action.suggested_reply}&rdquo;
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              asChild={Boolean(threadUrl)}
-              className="h-7 px-2 text-xs"
-              disabled={!threadUrl}
-            >
-              {threadUrl ? (
-                <a href={threadUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only sm:ml-1">View</span>
-                </a>
-              ) : (
-                <span>
-                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only sm:ml-1">View</span>
-                </span>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleMarkResolved}
-              disabled={isResolving}
-              className="h-7 px-2.5 text-xs rounded-md"
-              aria-busy={isResolving}
-            >
-              {isResolving ? (
-                <span
-                  className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
-                  aria-hidden="true"
-                />
-              ) : (
-                <Check className="h-3 w-3" aria-hidden="true" />
-              )}
-              <span className="sr-only sm:not-sr-only sm:ml-1">
-                {isResolving ? "..." : "Resolve"}
-              </span>
-            </Button>
-          </div>
+    <article className="group relative transition-colors duration-150 hover:bg-muted/70">
+      <div className="flex items-center gap-3 px-3 py-3 pr-10">
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${sourceBadge.className}`}
+          aria-label={sourceLabel}
+          title={sourceLabel}
+        >
+          <SourceBadgeIcon source={item.thread.source} fallback={sourceBadge.label} />
         </div>
 
-        {hasDetails && (
-          <div className="mt-3 flex justify-end">
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              aria-expanded={expanded}
-              aria-controls={detailsId}
-            >
-              Details
-              {expanded ? (
-                <ChevronUp className="h-3 w-3" aria-hidden="true" />
-              ) : (
-                <ChevronDown className="h-3 w-3" aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        )}
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold leading-snug text-foreground">
+            {threadUrl ? (
+              <a
+                href={threadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline underline-offset-2"
+              >
+                {item.thread.title}
+              </a>
+            ) : (
+              item.thread.title
+            )}
+          </h3>
 
-        {/* Error */}
-        {error && (
-          <div
-            role="alert"
-            className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive mt-3"
-          >
-            <AlertCircle
-              className="h-3.5 w-3.5 shrink-0 mt-px"
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <span>{timeAgo}</span>
+            {isCritical && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="font-medium text-destructive">Critical</span>
+              </>
+            )}
+            {metaTags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-border bg-background px-2 py-px text-[10px] font-medium uppercase tracking-wide text-foreground/75"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleMarkResolved}
+          disabled={isResolving}
+          className="h-6 w-6 rounded-full p-0 text-muted-foreground hover:text-foreground"
+          aria-busy={isResolving}
+          aria-label={isResolving ? "Resolving" : "Resolve"}
+        >
+          {isResolving ? (
+            <span
+              className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
               aria-hidden="true"
             />
-            {error}
-          </div>
-        )}
-
-        {/* Expanded details */}
-        {expanded && hasDetails && (
-          <div
-            id={detailsId}
-            className="mt-3 pt-3 border-t border-border/30 space-y-3 animate-expand"
-            role="region"
-            aria-label="Thread details"
-          >
-            {/* Target */}
-            {item.action.target && (
-              <p className="text-sm">
-                <span className="text-muted-foreground">Target: </span>
-                {item.action.target}
-              </p>
-            )}
-
-            {/* Evidence */}
-            {item.action.evidence && item.action.evidence.length > 0 && (
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Evidence
-                </p>
-                <ul className="space-y-1">
-                  {item.action.evidence.map((evidence, index) => (
-                    <li
-                      key={index}
-                      className="flex items-start gap-2 text-sm text-muted-foreground"
-                    >
-                      <span
-                        className="h-1 w-1 rounded-full bg-muted-foreground/30 mt-[7px] shrink-0"
-                        aria-hidden="true"
-                      />
-                      {evidence}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* AI Triage */}
-            {item.ai_suggested_reply && (
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" aria-hidden="true" />
-                  Related threads
-                </p>
-                <div className="rounded-md bg-muted/30 border border-border/30 p-3 prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:font-semibold">
-                  <ReactMarkdown
-                    components={{
-                      a: ({ href, children }) => (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {children}
-                        </a>
-                      ),
-                    }}
-                  >
-                    {item.ai_suggested_reply}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          ) : (
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+        </Button>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div
+          role="alert"
+          className="mx-3 mb-2 flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive"
+        >
+          <AlertCircle
+            className="h-3.5 w-3.5 shrink-0 mt-px"
+            aria-hidden="true"
+          />
+          {error}
+        </div>
+      )}
     </article>
   );
 }
@@ -344,11 +158,7 @@ function getUserMessage(item: TriageItemWithThread) {
   return colonIndex >= 0 ? labeledLine.slice(colonIndex + 1).trim() : labeledLine;
 }
 
-function formatSourceLabel(source: string | null) {
-  if (!source) {
-    return "Unknown";
-  }
-
+function formatSourceLabel(source: string) {
   return source
     .split(/[_-]/)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -384,4 +194,73 @@ function formatRelativeTime(timestamp: string | null) {
   }
 
   return `${Math.floor(diffMs / day)}d ago`;
+}
+
+function getMetaTags(item: TriageItemWithThread) {
+  const labels = item.thread.labels ?? [];
+  return labels
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((label) => label.replace(/[_-]/g, " "));
+}
+
+function getSourceBadge(sourceLabel: string) {
+  const normalized = sourceLabel.toLowerCase();
+
+  if (normalized.includes("reddit")) {
+    return { label: "R", className: "border-0 bg-muted text-orange-500" };
+  }
+
+  if (normalized.includes("github")) {
+    return { label: "G", className: "border-0 bg-muted text-foreground" };
+  }
+
+  if (normalized.includes("discord")) {
+    return { label: "D", className: "border-0 bg-muted text-indigo-500" };
+  }
+
+  return {
+    label: sourceLabel.charAt(0).toUpperCase(),
+    className: "border-0 bg-muted text-foreground/75",
+  };
+}
+
+function SourceBadgeIcon({
+  source,
+  fallback,
+}: {
+  source: string | null;
+  fallback: string;
+}) {
+  const normalized = source?.toLowerCase();
+
+  if (normalized === "github") {
+    return <Github className="h-5 w-5" aria-hidden="true" />;
+  }
+
+  if (normalized === "reddit") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="h-5 w-5 fill-current"
+        aria-hidden="true"
+      >
+        <path d="M14.37 15.88c.19.2.19.52 0 .72-.61.6-1.49.9-2.37.9-.88 0-1.76-.3-2.37-.9a.52.52 0 0 1 0-.72.49.49 0 0 1 .71 0c.91.9 2.41.9 3.32 0 .2-.2.52-.2.71 0Zm-3.87-2.36a1.11 1.11 0 1 0 0-2.22 1.11 1.11 0 0 0 0 2.22Zm3 0a1.11 1.11 0 1 0 0-2.22 1.11 1.11 0 0 0 0 2.22Zm8.5-1.47a2.17 2.17 0 0 0-3.7-1.53c-1.5-1.02-3.58-1.67-5.87-1.74l1-4.72 3.28.7a1.69 1.69 0 1 0 .1-1.03l-3.62-.77a.5.5 0 0 0-.59.38l-1.13 5.34c-2.34.05-4.47.7-5.99 1.74a2.16 2.16 0 1 0-2.67 3.35c-.02.16-.03.33-.03.5 0 3.11 3.59 5.64 8 5.64s8-2.53 8-5.64c0-.17-.01-.34-.03-.5A2.17 2.17 0 0 0 22 12.05Z" />
+      </svg>
+    );
+  }
+
+  if (normalized === "discord") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="h-5 w-5 fill-current"
+        aria-hidden="true"
+      >
+        <path d="M20.32 4.37A18.14 18.14 0 0 0 15.8 3a.08.08 0 0 0-.09.04c-.2.37-.42.86-.58 1.25a16.67 16.67 0 0 0-5.07 0 12.64 12.64 0 0 0-.59-1.25A.08.08 0 0 0 9.38 3a18.1 18.1 0 0 0-4.53 1.37.07.07 0 0 0-.03.03C1.93 8.7 1.13 12.9 1.52 17.05a.08.08 0 0 0 .03.06 18.29 18.29 0 0 0 5.56 2.81.08.08 0 0 0 .09-.03c.43-.58.81-1.2 1.15-1.85a.08.08 0 0 0-.04-.11 12.04 12.04 0 0 1-1.74-.83.08.08 0 0 1-.01-.13c.12-.09.24-.18.35-.27a.08.08 0 0 1 .08-.01c3.65 1.67 7.6 1.67 11.2 0a.08.08 0 0 1 .09.01c.11.09.23.18.35.27a.08.08 0 0 1-.01.13c-.55.32-1.13.6-1.74.83a.08.08 0 0 0-.04.11c.35.65.73 1.27 1.15 1.85a.08.08 0 0 0 .09.03 18.23 18.23 0 0 0 5.56-2.81.08.08 0 0 0 .03-.06c.46-4.8-.77-8.96-3.3-12.65a.06.06 0 0 0-.03-.03ZM9.12 14.52c-1.1 0-2-.99-2-2.2 0-1.22.88-2.2 2-2.2 1.11 0 2 .99 2 2.2 0 1.21-.89 2.2-2 2.2Zm5.76 0c-1.1 0-2-.99-2-2.2 0-1.22.88-2.2 2-2.2 1.11 0 2 .99 2 2.2 0 1.21-.89 2.2-2 2.2Z" />
+      </svg>
+    );
+  }
+
+  return <span>{fallback}</span>;
 }

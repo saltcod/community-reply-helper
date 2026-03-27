@@ -40,9 +40,11 @@ export function TriageTabs({
   criticalCount,
   platformCounts,
 }: TriageTabsProps) {
-  const platforms = Object.entries(platformCounts ?? {}).sort((a, b) =>
-    a[0].localeCompare(b[0]),
-  );
+  const platforms = Object.entries(platformCounts ?? {}).sort((a, b) => {
+    if (a[0] === "reddit") return -1;
+    if (b[0] === "reddit") return 1;
+    return a[0].localeCompare(b[0]);
+  });
 
   const renderEmpty = (type: string) => (
     <div
@@ -72,7 +74,7 @@ export function TriageTabs({
   );
 
   const renderItems = (items: TriageItemWithThread[]) => (
-    <div className="space-y-2" role="list" aria-label="Triage items">
+    <div className="divide-y divide-border/60 rounded-lg border border-border/50 bg-muted/20 overflow-hidden" role="list" aria-label="Triage items">
       {items.map((item, index) => (
         <div
           key={`${item.id}-${item.action.type}-${index}`}

@@ -89,8 +89,6 @@ async function TriageContent() {
   deleteItems.sort((a, b) => a.action.priority - b.action.priority);
 
   const allItems = [...amplifyItems, ...respondItems, ...deleteItems];
-  const aiTriagedCount = allItems.filter((i) => i.ai_suggested_reply).length;
-  const criticalCount = allItems.filter((i) => i.action.priority <= 2).length;
   const platformCounts = allItems.reduce<Record<string, number>>((acc, item) => {
     const source = item.thread.source ?? "unknown";
     acc[source] = (acc[source] ?? 0) + 1;
@@ -102,8 +100,6 @@ async function TriageContent() {
       amplifyItems={amplifyItems}
       respondItems={respondItems}
       deleteItems={deleteItems}
-      aiTriagedCount={aiTriagedCount}
-      criticalCount={criticalCount}
       platformCounts={platformCounts}
     />
   );

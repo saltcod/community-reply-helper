@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, DM_Sans } from "next/font/google";
+import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
@@ -16,15 +16,8 @@ export const metadata: Metadata = {
   description: "Review and manage community thread actions",
 };
 
-const outfit = Outfit({
+const geistSans = Geist({
   variable: "--font-display",
-  display: "swap",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const dmSans = DM_Sans({
-  variable: "--font-body",
   display: "swap",
   subsets: ["latin"],
 });
@@ -86,9 +79,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${dmSans.className} ${outfit.variable} antialiased`}
-      >
+      <body className={`${geistSans.className} ${geistSans.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -119,7 +110,7 @@ export default function RootLayout({
 
           <main
             id="main-content"
-            className="sb-glow min-h-[calc(100vh-4rem)] mx-auto w-full max-w-6xl px-6 py-10"
+            className="sb-glow min-h-[calc(100vh-4rem)] mx-auto w-full max-w-5xl px-6 py-10"
             tabIndex={-1}
           >
             <div className="relative z-10">{children}</div>

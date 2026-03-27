@@ -10,8 +10,6 @@ interface TriageDashboardProps {
   amplifyItems: TriageItemWithThread[];
   respondItems: TriageItemWithThread[];
   deleteItems: TriageItemWithThread[];
-  aiTriagedCount: number;
-  criticalCount: number;
   platformCounts: Record<string, number>;
 }
 
@@ -19,12 +17,10 @@ export function TriageDashboard({
   amplifyItems,
   respondItems,
   deleteItems,
-  aiTriagedCount,
-  criticalCount,
   platformCounts,
 }: TriageDashboardProps) {
   const [filter, setFilter] = useState<Filter>(null);
-  const [platformFilter, setPlatformFilter] = useState<string | null>(null);
+  const [platformFilter, setPlatformFilter] = useState<string | null>("reddit");
 
   const toggleFilter = (f: Filter) => {
     setFilter((prev) => (prev === f ? null : f));
@@ -53,6 +49,17 @@ export function TriageDashboard({
 
     return filtered;
   };
+
+  const itemsForSpecialCounts = [...amplifyItems, ...respondItems, ...deleteItems]
+    .filter((item) =>
+      platformFilter ? (item.thread.source ?? "unknown") === platformFilter : true,
+    );
+  const aiTriagedCount = itemsForSpecialCounts.filter(
+    (item) => item.ai_suggested_reply,
+  ).length;
+  const criticalCount = itemsForSpecialCounts.filter(
+    (item) => item.action.priority <= 2,
+  ).length;
 
   return (
     <TriageTabs
