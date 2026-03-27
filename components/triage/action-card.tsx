@@ -5,6 +5,8 @@ import {
   Check,
   AlertCircle,
   Github,
+  Wand2,
+  Copy,
 } from "lucide-react";
 import { TriageItemWithThread } from "@/lib/types/triage";
 import { getThreadExternalUrl } from "@/lib/triage/url";
@@ -19,7 +21,22 @@ interface ActionCardProps {
 export function ActionCard({ item }: ActionCardProps) {
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
+
+  const suggestedReply = item.action.suggested_reply;
+
+  const handleCopy = async () => {
+    if (!suggestedReply) return;
+    try {
+      await navigator.clipboard.writeText(suggestedReply);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const isCritical = item.action.priority <= 2;
   const threadUrl = getThreadExternalUrl(
@@ -94,13 +111,25 @@ export function ActionCard({ item }: ActionCardProps) {
         </div>
       </div>
 
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+        {suggestedReply && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded((v) => !v)}
+            className={`h-6 w-6 rounded-full p-0 transition-colors ${expanded ? "text-primary" : "text-muted-foreground opacity-0 group-hover:opacity-100"}`}
+            aria-label="Show suggested reply"
+            aria-expanded={expanded}
+          >
+            <Wand2 className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
           onClick={handleMarkResolved}
           disabled={isResolving}
-          className="h-6 w-6 rounded-full p-0 text-muted-foreground hover:text-foreground"
+          className="h-6 w-6 rounded-full p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
           aria-busy={isResolving}
           aria-label={isResolving ? "Resolving" : "Resolve"}
         >
@@ -114,6 +143,31 @@ export function ActionCard({ item }: ActionCardProps) {
           )}
         </Button>
       </div>
+
+      {expanded && suggestedReply && (
+        <div className="mx-3 mb-3 rounded-lg border border-border/40 bg-muted/25 p-3">
+          <div className="mb-1.5 flex items-center justify-between gap-3">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Suggested reply
+            </p>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Copy suggested reply"
+            >
+              {copied ? (
+                <><Check className="h-3 w-3" aria-hidden="true" />Copied</>
+              ) : (
+                <><Copy className="h-3 w-3" aria-hidden="true" />Copy</>
+              )}
+            </button>
+          </div>
+          <p className="text-sm italic text-foreground/80 leading-relaxed">
+            &ldquo;{suggestedReply}&rdquo;
+          </p>
+        </div>
+      )}
 
       {/* Error */}
       {error && (

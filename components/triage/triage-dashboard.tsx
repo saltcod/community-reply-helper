@@ -47,7 +47,11 @@ export function TriageDashboard({
       );
     }
 
-    return filtered;
+    return filtered.slice().sort((a, b) => {
+      const aTime = a.thread.first_msg_time ?? a.analyzed_at;
+      const bTime = b.thread.first_msg_time ?? b.analyzed_at;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    });
   };
 
   const itemsForSpecialCounts = [...amplifyItems, ...respondItems, ...deleteItems]
